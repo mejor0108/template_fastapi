@@ -285,12 +285,99 @@ async def create_item(item_id: int, item: Item):    # fastApi pude identificar e
 
 @app.put("/items/{item_id}")        # Se define un path con parametro, query y body
 async def create_item(item_id: int, item: Item, q: str | None = None): 
-    result = {"item_id": item_id, **item.dict()}
-    if q:
-        result.update({"q": q})
+    result = {"item_id": item_id, **item.dict()}    # {item_id} : path
+    if q:                                           # item :  Object Item(BaseModel) Body
+        result.update({"q": q})                     # q : query parameters
     return result
 
 ```
+### Query
+#### Validation Query Parameters and string Validation
+```py
+## Version de fastAPI >= 0.95.1 / python >= 3.10
+from typing import Annotated
+from fastapi import FastAPI, Query
+
+app = FastAPI()
+
+@app.get("/items/")     # acepta un query del tipo str(opcional) y con un 
+                        # tamaño máximo de 50 caracteres
+async def read_items(q: Annotated[str | None, Query(max_length=50)] = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
+
+@app.get("/items/")     # define que q es obligatorio y minimo 3 caracteres
+async def read_items(q: Annotated[str, Query(min_length=3)]):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
+
+@app.get("/items/")
+async def read_items(
+    q: Annotated[
+        str | None,
+        Query(
+            alias="item-query",         # metadata
+            title="Query string",       # metadata
+            description="Query string for the items to search in the database that have a good match",          # metadata
+            min_length=3,               # requisito - validación
+            max_length=50,              # requisito - validación
+            regex="^fixedquery$",       # requisito - validación
+            deprecated=True,            # metada
+        ),
+    ] = None
+):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
+
+## Query: Validation
+## max_length = XX   : largo máximo hasta xx caracteres
+## min_length = XX   : largo minimo hasta xx caracteres
+## regex = <pattern> : valida que cumpla la expresión regular <pattern>
+
+## Query: Metadata:
+## alias:
+## title:
+## description :
+## deprecated : 
+```
+#### Versión alternativa(old)
+```py
+# version: fastAPI >= 0.95.1 y python >= 3.10
+from fastapi import FastAPI, Query     # Sin usar Annotated
+
+app = FastAPI()
+
+@app.get("/items/")         # con la función se define un valor default None
+async def read_items(q: str | None = Query(default=None, max_length=50)):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
+```
+
+### Path Parameters and Numeric Validations
+
+```py
+# Versión : fastAPI >= 0.95.1 y python >= 3.10
+from typing import Annotated
+from fastapi import FastAPI, Path, Query
+
+app = FastAPI()
+@app.get("/items/{item_id}")
+async def read_items(           # la variable item_id es un path y se define un título
+    item_id: Annotated[int, Path(title="The ID of the item to get")],
+    q: Annotated[str | None, Query(alias="item-query")] = None,
+):
+    pass 
+
+```
+
 
 ### Metodos disponibles:
 - GET       : Leer datos del servicio
